@@ -5,12 +5,15 @@ import { auth } from "@/firebase/fireabseconfig";
 import { FirebaseError } from "firebase/app";
 import { db } from "@/firebase/fireabseconfig"; // Import Firestore
 import { doc, setDoc } from "firebase/firestore"; // Firestore functions
+import { useRouter } from "next/navigation";
 
 const SignUp: React.FC = () => {
   const [name, setName] = useState<string>("");
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
+
+  const router = useRouter()
 
   const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -33,6 +36,7 @@ const SignUp: React.FC = () => {
       });
 
       console.log("User Registered & Data Stored:", user);
+      router.push('/chats')
       alert("User Registration Successful!");
     } catch (error: unknown) {
       if (error instanceof FirebaseError) {
