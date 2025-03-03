@@ -1,4 +1,3 @@
-import Conversation from '@/Components/ChatRoom/ChatRoom'
 import Sidebar from '@/Components/ChatRoom/Sidebar'
 import React from 'react'
 
