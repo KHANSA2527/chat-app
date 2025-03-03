@@ -13,7 +13,7 @@ import {
   onSnapshot,
   serverTimestamp,
   doc,
-  DocumentData,
+  
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 
@@ -26,7 +26,7 @@ interface User {
 interface Chat {
   id: string;
   members: string[];
-  createdAt: any;
+  createdAt: string;
   last_msg: string;
   name?: string;
   img?: string;
@@ -213,7 +213,7 @@ const Sidebar: React.FC = () => {
                 className="flex items-center gap-3 p-3  rounded-md cursor-pointer hover:bg-gray-400 transition"
               >
                 <img
-                  src={chat.img}
+                  src="/images/profile-user.svg"
                   alt={chat.name}
                   className="w-10 h-10 rounded-full border-2 border-white"
                 />
