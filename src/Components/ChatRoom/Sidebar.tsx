@@ -41,17 +41,26 @@ const Sidebar: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const currentUserUid = auth.currentUser?.uid;
   const router = useRouter();
+  
   useEffect(() => {
     if (!currentUserUid) return;
 
-    // Fetch all users
     const unsubscribeUsers = onSnapshot(collection(db, "users"), (snapshot) => {
-      const fetchedUsers = snapshot.docs.map((doc) => ({
-        uid: doc.id, // Ensure unique id assignment
-        ...doc.data(),
-      })) as User[];
+      const fetchedUsers: User[] = snapshot.docs
+        .map((doc) => {
+          const data = doc.data();
+          return {
+            uid: doc.id, // Ensure unique ID assignment
+            name: data.name || "Unknown", // Default name if missing
+            img: data.img || "/default-profile.png", // Default image if missing
+          };
+        })
+        .filter((user) => user.uid !== auth.currentUser?.uid); // Exclude current user
+    
       setUsers(fetchedUsers);
     });
+    
+    
     // Fetch user's chats
     const chatsRef = collection(db, "chats");
     const chatsQuery = query(
@@ -137,6 +146,7 @@ const Sidebar: React.FC = () => {
       if (chatExists) {
         console.log("Chat already exists.");
         alert("Chat already exists");
+        closeModal()
         return;
       }
 
@@ -146,6 +156,7 @@ const Sidebar: React.FC = () => {
         createdAt: serverTimestamp(), // Timestamp when chat is created
         last_msg: "", // Initially empty
       });
+      closeModal()
       alert("Chat created successfully");
       console.log("Chat created successfully.");
     } catch (error) {
