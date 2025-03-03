@@ -2,13 +2,17 @@
 import React, { useState, useEffect } from "react";
 import { Plus, Search, X, Menu } from "lucide-react";
 import { db, auth } from "@/firebase/fireabseconfig";
+
 import {
   collection,
   query,
   where,
   getDocs,
   addDoc,
+  getDoc,
   onSnapshot,
+  serverTimestamp,
+  doc,
   DocumentData,
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
@@ -22,10 +26,11 @@ interface User {
 interface Chat {
   id: string;
   members: string[];
-  name: string;
-  img: string;
+  createdAt: any;
+  last_msg: string;
+  name?: string;
+  img?: string;
 }
-
 
 const Sidebar: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -33,9 +38,9 @@ const Sidebar: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [chats, setChats] = useState<Chat[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
+  const [loading, setLoading] = useState(true);
   const currentUserUid = auth.currentUser?.uid;
- const router = useRouter()
+  const router = useRouter();
   useEffect(() => {
     if (!currentUserUid) return;
 
@@ -47,18 +52,41 @@ const Sidebar: React.FC = () => {
       })) as User[];
       setUsers(fetchedUsers);
     });
-
     // Fetch user's chats
-    const unsubscribeChats = onSnapshot(
-      query(collection(db, "chats"), where("members", "array-contains", currentUserUid)),
-      (snapshot) => {
-        const fetchedChats = snapshot.docs.map((doc) => ({
-          id: doc.id, // Ensure unique id assignment
-          ...doc.data(),
-        })) as Chat[];
-        setChats(fetchedChats);
-      }
+    const chatsRef = collection(db, "chats");
+    const chatsQuery = query(
+      chatsRef,
+      where("members", "array-contains", currentUserUid)
     );
+
+    const unsubscribeChats = onSnapshot(chatsQuery, async (snapshot) => {
+      const chatData: Chat[] = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...(doc.data() as Chat), // Type assertion
+      }));
+
+      // Fetch user details for each chat
+      const enrichedChats = await Promise.all(
+        chatData.map(async (chat) => {
+          const otherUserUid = chat.members.find(
+            (uid) => uid !== currentUserUid
+          );
+          if (!otherUserUid) return chat;
+
+          const userDoc = await getDoc(doc(db, "users", otherUserUid));
+          const userData = userDoc.exists() ? (userDoc.data() as User) : null;
+
+          return {
+            ...chat,
+            name: userData?.name || "Unknown User",
+            img: userData?.img || "/profile-user.svg", // Default profile image
+          };
+        })
+      );
+
+      setChats(enrichedChats);
+      setLoading(false);
+    });
 
     return () => {
       unsubscribeUsers();
@@ -67,53 +95,63 @@ const Sidebar: React.FC = () => {
   }, [currentUserUid]);
 
   const filteredChats = chats.filter(
-    (chat) => chat.name && chat.name.toLowerCase().includes(searchTerm.toLowerCase())
+    (chat) =>
+      chat.name && chat.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
-  
 
   const openModal = () => setIsAddingChat(true);
   const closeModal = () => setIsAddingChat(false);
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
 
+  const handleChatClick = (chatId: string) => {
+    router.push(`/chats/${chatId}`); // Navigates to chat page with chat ID
+  };
+
   const startChat = async (user: User) => {
+    console.log("user===", user);
+
     try {
-      const chatQuery = query(
-        collection(db, "chats"),
-        where("members", "array-contains", currentUserUid)
+      const currentUser = auth.currentUser; // Logged-in user
+      if (!currentUser) return;
+
+      // Reference to Firestore chats collection
+      const chatsRef = collection(db, "chats");
+
+      // Check if chat already exists
+      const q = query(
+        chatsRef,
+        where("members", "array-contains", currentUser.uid)
       );
-  
-      const querySnapshot = await getDocs(chatQuery);
-      let existingChat = null;
-  
+
+      const querySnapshot = await getDocs(q);
+      let chatExists = false;
+
       querySnapshot.forEach((doc) => {
-        const data = doc.data();
-        if (data.members.includes(user.uid)) {
-          existingChat = { id: doc.id };
+        const chat = doc.data();
+        if (chat.members.includes(user.uid)) {
+          chatExists = true;
         }
       });
-  
-      if (existingChat) {
-        router.push(`/chat/${existingChat.id}`);
-      } else {
-        const chatData: any = {
-          members: [currentUserUid, user.uid],
-          createdAt: new Date(),
-        };
-  
-        if (user.img) {
-          chatData.img = user.img; // ✅ Add only if defined
-        }
-  
-        const newChatRef = await addDoc(collection(db, "chats"), chatData);
-        router.push(`/chat/${newChatRef.id}`);
+
+      // If chat exists, do nothing
+      if (chatExists) {
+        console.log("Chat already exists.");
+        alert("Chat already exists");
+        return;
       }
-  
-      onClose(); // Close modal
+
+      // Create new chat
+      await addDoc(chatsRef, {
+        members: [currentUser.uid, user.uid], // Store both users
+        createdAt: serverTimestamp(), // Timestamp when chat is created
+        last_msg: "", // Initially empty
+      });
+      alert("Chat created successfully");
+      console.log("Chat created successfully.");
     } catch (error) {
-      console.error("Error creating chat:", error);
+      console.error("Error starting chat:", error);
     }
   };
-  
 
   return (
     <>
@@ -163,11 +201,16 @@ const Sidebar: React.FC = () => {
 
         {/* Chat List */}
         <ul className="mt-2 space-y-3">
-          {filteredChats.length > 0 ? (
+          {loading ? (
+            <p className="text-gray-300 text-sm text-center py-4">
+              Loading chats...
+            </p>
+          ) : filteredChats.length > 0 ? (
             filteredChats.map((chat) => (
               <li
                 key={chat.id}
-                className="flex items-center gap-3 p-3 bg-gray-900 rounded-md cursor-pointer hover:bg-gray-700 transition"
+                onClick={() => handleChatClick(chat.id)}
+                className="flex items-center gap-3 p-3  rounded-md cursor-pointer hover:bg-gray-400 transition"
               >
                 <img
                   src={chat.img}
@@ -205,7 +248,7 @@ const Sidebar: React.FC = () => {
                 <li
                   key={user.uid}
                   className="flex items-center gap-3 p-3 bg-gray-100 rounded-md cursor-pointer hover:bg-gray-200 transition"
-                  onClick={() => addChat(user)}
+                  onClick={() => startChat(user)}
                 >
                   <img
                     src={user.img || "https://i.pravatar.cc/40"}

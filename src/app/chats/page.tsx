@@ -6,7 +6,7 @@ const Chats = () => {
   return (
     <div className="flex h-screen">
       <Sidebar />
-      <Conversation />
+      {/* <Conversation /> */}
     </div>
   )
 }
