@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
-import { Send, File, ChevronLeft, Mic, Smile } from "lucide-react";
+import { Send, Paperclip, ChevronLeft, Mic, Smile } from "lucide-react";
 import { db, auth } from "@/firebase/fireabseconfig";
 import {
   collection,
@@ -11,17 +11,31 @@ import {
   serverTimestamp,
   doc,
   getDoc,
+  Timestamp 
 } from "firebase/firestore";
 import Picker from "@emoji-mart/react";
 import data from "@emoji-mart/data";
+
 
 interface Chat {
   chat_id: string;
 }
 
+interface Message {
+  id: string;
+  text?: string;
+  fileUrl?: string;
+  senderId: string;
+  createdAt?: Timestamp;
+}
+
+interface EmojiType {
+  native: string;
+}
+
 const Conversation = ({ chat_id }: Chat) => {
   const [messages, setMessages] = useState<
-    { id: string; text?: string; fileUrl?: string; senderId: string; createdAt?: any }[]
+  { id: string; text?: string; fileUrl?: string; senderId: string; createdAt?: Timestamp }[]
   >([]);
   const [message, setMessage] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -67,15 +81,12 @@ const Conversation = ({ chat_id }: Chat) => {
     const q = query(messagesRef, orderBy("createdAt", "asc"));
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetchedMessages = snapshot.docs.map((doc) => ({
+      const fetchedMessages: Message[] = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
-      })) as any;
+      })) as Message[];
+    
       setMessages(fetchedMessages);
-
-      setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-      }, 100);
     });
 
     return () => unsubscribe();
@@ -114,10 +125,11 @@ const Conversation = ({ chat_id }: Chat) => {
     }
   };
 
-  const handleEmojiSelect = (emoji: any) => {
+  const handleEmojiSelect = (emoji: EmojiType) => {
     setMessage((prevMessage) => prevMessage + emoji.native);
     setShowEmojiPicker(false);
   };
+  
 
   return (
     <div className="flex flex-col w-full h-screen bg-gray-100">
@@ -155,7 +167,14 @@ const Conversation = ({ chat_id }: Chat) => {
               </a>
             )}
             <span className="absolute bottom-1 right-2 text-xs text-gray-200">
-              {msg.createdAt?.toDate ? msg.createdAt.toDate().toLocaleTimeString() : ""}
+              {msg.createdAt?.toDate
+                ? msg.createdAt
+                    .toDate()
+                    .toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                : ""}
             </span>
           </div>
         ))}
@@ -166,12 +185,15 @@ const Conversation = ({ chat_id }: Chat) => {
       <div className="p-3 bg-gray-200 border-t flex items-center gap-2 shadow-md relative">
         {/* File Attachment Icon */}
         <label className="p-2 rounded-full hover:bg-gray-300 cursor-pointer">
-          <File size={24} className="text-gray-600" />
+          <Paperclip size={24} className="text-gray-600" />
           <input type="file" className="hidden" onChange={handleFileChange} />
         </label>
 
         {/* Emoji Picker Toggle Button */}
-        <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-2 rounded-full hover:bg-gray-300">
+        <button
+          onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+          className="p-2 rounded-full hover:bg-gray-300"
+        >
           <Smile size={24} className="text-gray-600" />
         </button>
 
@@ -192,11 +214,10 @@ const Conversation = ({ chat_id }: Chat) => {
             className="w-full p-3 bg-transparent outline-none text-gray-800"
             placeholder="Type a message..."
           />
-          <button className="p-2 rounded-full hover:bg-gray-300">
+        </div>
+        <button className="p-2 rounded-full hover:bg-gray-300">
             <Mic size={24} className="text-gray-600" />
           </button>
-        </div>
-
         {/* Send Button */}
         <button
           onClick={sendMessage}
