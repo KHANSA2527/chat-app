@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
-import { Send, File, ChevronLeft, Mic } from "lucide-react";
+import { Send, File, ChevronLeft, Mic, Smile } from "lucide-react";
 import { db, auth } from "@/firebase/fireabseconfig";
 import {
   collection,
@@ -12,6 +12,8 @@ import {
   doc,
   getDoc,
 } from "firebase/firestore";
+import Picker from "@emoji-mart/react";
+import data from "@emoji-mart/data";
 
 interface Chat {
   chat_id: string;
@@ -24,6 +26,7 @@ const Conversation = ({ chat_id }: Chat) => {
   const [message, setMessage] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [otherUserName, setOtherUserName] = useState<string | null>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const userId = auth.currentUser?.uid;
 
@@ -111,6 +114,11 @@ const Conversation = ({ chat_id }: Chat) => {
     }
   };
 
+  const handleEmojiSelect = (emoji: any) => {
+    setMessage((prevMessage) => prevMessage + emoji.native);
+    setShowEmojiPicker(false);
+  };
+
   return (
     <div className="flex flex-col w-full h-screen bg-gray-100">
       {/* Header */}
@@ -131,8 +139,8 @@ const Conversation = ({ chat_id }: Chat) => {
             key={msg.id}
             className={`relative max-w-[80%] md:max-w-md p-3 rounded-xl text-white shadow-md ${
               msg.senderId === userId
-                ? "bg-blue-500 ml-auto rounded-tr-none" // Sender (Right Side)
-                : "bg-gray-500 mr-auto rounded-tl-none" // Receiver (Left Side)
+                ? "bg-blue-500 ml-auto rounded-tr-none"
+                : "bg-gray-500 mr-auto rounded-tl-none"
             }`}
           >
             {msg.text && <p>{msg.text}</p>}
@@ -155,12 +163,24 @@ const Conversation = ({ chat_id }: Chat) => {
       </div>
 
       {/* Input Box */}
-      <div className="p-3 bg-gray-200 border-t flex items-center gap-2 shadow-md">
+      <div className="p-3 bg-gray-200 border-t flex items-center gap-2 shadow-md relative">
         {/* File Attachment Icon */}
         <label className="p-2 rounded-full hover:bg-gray-300 cursor-pointer">
           <File size={24} className="text-gray-600" />
           <input type="file" className="hidden" onChange={handleFileChange} />
         </label>
+
+        {/* Emoji Picker Toggle Button */}
+        <button onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="p-2 rounded-full hover:bg-gray-300">
+          <Smile size={24} className="text-gray-600" />
+        </button>
+
+        {/* Emoji Picker */}
+        {showEmojiPicker && (
+          <div className="absolute bottom-14 left-2 z-50">
+            <Picker data={data} onEmojiSelect={handleEmojiSelect} />
+          </div>
+        )}
 
         {/* Text Input */}
         <div className="flex flex-1 items-center bg-white rounded-lg border focus-within:ring-2 focus-within:ring-blue-400">
@@ -172,7 +192,6 @@ const Conversation = ({ chat_id }: Chat) => {
             className="w-full p-3 bg-transparent outline-none text-gray-800"
             placeholder="Type a message..."
           />
-          {/* Microphone Icon (Right Side) */}
           <button className="p-2 rounded-full hover:bg-gray-300">
             <Mic size={24} className="text-gray-600" />
           </button>
