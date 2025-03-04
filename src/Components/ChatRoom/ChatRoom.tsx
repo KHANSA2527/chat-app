@@ -127,7 +127,7 @@ const Conversation = ({ chat_id }: Chat) => {
 
   const handleEmojiSelect = (emoji: EmojiType) => {
     setMessage((prevMessage) => prevMessage + emoji.native);
-    setShowEmojiPicker(false);
+   // setShowEmojiPicker(false);
   };
   
 
