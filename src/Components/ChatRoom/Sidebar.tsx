@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { Plus, Search, X, Menu } from "lucide-react";
+import { Plus, Search, X, Menu, LogOut } from "lucide-react";
 import { db, auth } from "@/firebase/fireabseconfig";
 
 import {
@@ -13,9 +13,9 @@ import {
   onSnapshot,
   serverTimestamp,
   doc,
-  
 } from "firebase/firestore";
 import { useRouter } from "next/navigation";
+import { signOut } from "firebase/auth";
 
 interface User {
   uid: string;
@@ -41,7 +41,7 @@ const Sidebar: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const currentUserUid = auth.currentUser?.uid;
   const router = useRouter();
-  
+
   useEffect(() => {
     if (!currentUserUid) return;
 
@@ -56,11 +56,10 @@ const Sidebar: React.FC = () => {
           };
         })
         .filter((user) => user.uid !== auth.currentUser?.uid); // Exclude current user
-    
+
       setUsers(fetchedUsers);
     });
-    
-    
+
     // Fetch user's chats
     const chatsRef = collection(db, "chats");
     const chatsQuery = query(
@@ -146,7 +145,7 @@ const Sidebar: React.FC = () => {
       if (chatExists) {
         console.log("Chat already exists.");
         alert("Chat already exists");
-        closeModal()
+        closeModal();
         return;
       }
 
@@ -156,11 +155,20 @@ const Sidebar: React.FC = () => {
         createdAt: serverTimestamp(), // Timestamp when chat is created
         last_msg: "", // Initially empty
       });
-      closeModal()
+      closeModal();
       alert("Chat created successfully");
       console.log("Chat created successfully.");
     } catch (error) {
       console.error("Error starting chat:", error);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      router.push("/"); // Redirect to login page after logout
+    } catch (error) {
+      console.error("Logout failed:", error);
     }
   };
 
@@ -237,6 +245,15 @@ const Sidebar: React.FC = () => {
             </p>
           )}
         </ul>
+
+        <button
+  onClick={handleLogout}
+  className="absolute bottom-6 left-6 w-[80%] flex items-center gap-2 px-4 py-2 text-sm text-white bg-red-500 rounded-lg hover:bg-red-600 transition"
+>
+  <LogOut size={18} />
+  Logout
+</button>
+
       </div>
 
       {/* Modal for Adding New Chat */}

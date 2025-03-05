@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
-import { Send, Paperclip, ChevronLeft, Mic, Smile } from "lucide-react";
+import { Send, Paperclip, Mic, Smile, Search, X, MoreVertical } from "lucide-react";
 import { db, auth } from "@/firebase/fireabseconfig";
 import {
   collection,
@@ -11,11 +11,10 @@ import {
   serverTimestamp,
   doc,
   getDoc,
-  Timestamp 
+  Timestamp,
 } from "firebase/firestore";
 import Picker from "@emoji-mart/react";
 import data from "@emoji-mart/data";
-
 
 interface Chat {
   chat_id: string;
@@ -35,13 +34,21 @@ interface EmojiType {
 
 const Conversation = ({ chat_id }: Chat) => {
   const [messages, setMessages] = useState<
-  { id: string; text?: string; fileUrl?: string; senderId: string; createdAt?: Timestamp }[]
+    {
+      id: string;
+      text?: string;
+      fileUrl?: string;
+      senderId: string;
+      createdAt?: Timestamp;
+    }[]
   >([]);
   const [message, setMessage] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [otherUserName, setOtherUserName] = useState<string | null>(null);
-  const [showEmojiPicker, setShowEmojiPicker] = useState(true);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const [showSearch, setShowSearch] = useState(false);
   const userId = auth.currentUser?.uid;
 
   useEffect(() => {
@@ -85,7 +92,7 @@ const Conversation = ({ chat_id }: Chat) => {
         id: doc.id,
         ...doc.data(),
       })) as Message[];
-    
+
       setMessages(fetchedMessages);
     });
 
@@ -123,25 +130,54 @@ const Conversation = ({ chat_id }: Chat) => {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
     }
-  };
-
+  };  
   const handleEmojiSelect = (emoji: EmojiType) => {
     setMessage((prevMessage) => prevMessage + emoji.native);
-   // setShowEmojiPicker(false);
+    // setShowEmojiPicker(false);
   };
   
-
   return (
     <div className="flex flex-col w-full h-screen bg-gray-100">
       {/* Header */}
-      <div className="flex items-center gap-3 bg-blue-600 text-white p-4 text-lg font-semibold shadow-md">
-        <ChevronLeft size={24} className="cursor-pointer" />
+      <div className="flex items-center gap-3 text-black p-6 text-lg font-bold">
         <img
           src={"/images/profile-user.svg"}
           alt="Profile"
           className="w-10 h-10 rounded-full object-cover"
         />
         <span>{otherUserName ? otherUserName : "Loading..."}</span>
+
+        {/* Search Bar - Pushes to Right */}
+        <div className="flex items-center gap-3 text-black p-4 text-lg font-bold w-full">
+          {/* Right-Aligned Section: Search & 3-Dot Menu */}
+          <div className="ml-auto flex items-center gap-3">
+            {/* Search Bar / Icon */}
+            {showSearch ? (
+              <div className="flex items-center space-x-2 bg-gray-200 rounded-lg px-3 py-1">
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  autoFocus
+                  className="bg-transparent outline-none text-gray-700 px-2 py-1 w-40 md:w-64"
+                />
+                <button onClick={() => setShowSearch(false)}>
+                  <X size={18} className="text-gray-600" />
+                </button>
+              </div>
+            ) : (
+              <button onClick={() => setShowSearch(true)}>
+                <Search size={20} className="text-gray-600" />
+              </button>
+            )}
+
+            {/* Three-Dot Menu */}
+            <button>
+              <MoreVertical size={20} className="text-gray-600" />
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Messages */}
@@ -168,12 +204,10 @@ const Conversation = ({ chat_id }: Chat) => {
             )}
             <span className="absolute bottom-1 right-2 text-xs text-gray-200">
               {msg.createdAt?.toDate
-                ? msg.createdAt
-                    .toDate()
-                    .toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })
+                ? msg.createdAt.toDate().toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
                 : ""}
             </span>
           </div>
@@ -216,8 +250,8 @@ const Conversation = ({ chat_id }: Chat) => {
           />
         </div>
         <button className="p-2 rounded-full hover:bg-gray-300">
-            <Mic size={24} className="text-gray-600" />
-          </button>
+          <Mic size={24} className="text-gray-600" />
+        </button>
         {/* Send Button */}
         <button
           onClick={sendMessage}
