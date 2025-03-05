@@ -166,9 +166,11 @@ const Sidebar: React.FC = () => {
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      router.push("/"); // Redirect to login page after logout
+      console.log("User logged out successfully");
+      // Optionally, redirect user to login page
+      window.location.href = "/"; 
     } catch (error) {
-      console.error("Logout failed:", error);
+      console.error("Error logging out:", error);
     }
   };
 
